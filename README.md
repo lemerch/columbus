@@ -63,7 +63,7 @@ public abstract class AbstractDAOImpl<MODEL, DTO> implements AbstractDAO<MODEL, 
     protected String table;
     
     public AbstractDAOImpl(
-            String table, JdbcMapper.forModel<T> modelMapper, JdbcMapper.forDTO<E> dtoMapper
+            String table, JdbcMapper.forModel<> modelMapper, JdbcMapper.forDTO<> dtoMapper
     ) {
         this.modelMapper = modelMapper;
         this.dtoMapper = dtoMapper;
@@ -87,7 +87,7 @@ public abstract class AbstractDAOImpl<MODEL, DTO> implements AbstractDAO<MODEL, 
                 Map.of("value", value), modelMapper.getRowMapper());
     }
     @Override
-    public void create(E dto) {
+    public void create(DTO dto) {
         jdbcTemplate.update("insert into " + table +
                 " (" + this.dtoMapper.getColumns() + ") " +
                 "values (" + dtoMapper.getValues() + ")", dtoMapper.getParams(dto));
