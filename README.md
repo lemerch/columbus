@@ -101,12 +101,12 @@ public abstract class AbstractDAOImpl<MODEL, DTO> implements AbstractDAO<MODEL, 
 public class TestDAOImpl extends AbstractDAOImpl<Test, TestDTO> implements TestDAO {
     public TestDAOImpl() {
         super("test_table",
-                new JdbcMapper.forModel<Test>(Test.class,
+                new JdbcMapper.forModel<>(Test.class,
                         "id", "id",
                         "name", "sname",
                         "message", "smessage"
                 ),
-                new JdbcMapper.forDTO<TestDTO>(TestDTO.class,
+                new JdbcMapper.forDTO<>(TestDTO.class,
                         "name", "sname",
                         "message", "smessage"
                 )
