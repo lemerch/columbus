@@ -50,7 +50,7 @@ The Spring Framework is released under version 2.0 of the [Apache License](https
 
 ## Example
 
-### JdbcTemplate
+### JdbcMapper
 
 ```java
 public abstract class AbstractDAOImpl<MODEL, DTO> implements AbstractDAO<MODEL, DTO> {
@@ -114,6 +114,8 @@ public class TestDAOImpl extends AbstractDAOImpl<Test, TestDTO> implements TestD
     }
 }
 ```
+
+### FieldMapper
 
 ```java
 @Service
