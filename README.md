@@ -18,7 +18,13 @@
 ```
 
 ## About
-...
+This library will help you create universal repositories based on NamedJdbcTemplate, generate RowMapper for your models, and link your models to dto or dto to dto.
+
+...dto :)
+
+## Limitations
+
+Your models/dto should contain default constructors and setters with geters, i.e. be JavaBean
 
 ## Build
 
@@ -34,15 +40,13 @@
     <dependency>
           <groupId>com.github.lemerch</groupId>
           <artifactId>columbus</artifactId>
-          <version>6.0.12</version>
+          <version>1-6.0.12</version>
     </dependency>
 </dependencies>
 ```
 
 **Warrning**
-this library uses spring-data, so I copy the columbus version from spring-data for ease of connection to your project
-
-Example: yet, columbus use spring-data 6.0.12, so columbus version will be 6.0.12
+This library uses spring-jdbc as a dependency. Therefore, for the convenience of users, the version template is arranged as follows: [columbusVersion - spring-dataVersion], for example: 1-6.0.12
 
 ## License
 
@@ -53,44 +57,39 @@ The Spring Framework is released under version 2.0 of the [Apache License](https
 ### JdbcMapper
 
 ```java
-public abstract class AbstractDAOImpl<MODEL, DTO> implements AbstractDAO<MODEL, DTO> {
-    
+public abstract class AbstractDAOImpl<MODEL> implements AbstractDAO<MODEL> {
+
     @Autowired
     protected NamedParameterJdbcTemplate jdbcTemplate;
     
-    protected JdbcMapper.forModel<MODEL> modelMapper;
-    protected JdbcMapper.forDTO<DTO> dtoMapper;
+    protected RowMapper<MODEL> rowMapper;
     protected String table;
     
-    public AbstractDAOImpl(
-            String table, JdbcMapper.forModel<> modelMapper, JdbcMapper.forDTO<> dtoMapper
-    ) {
-        this.modelMapper = modelMapper;
-        this.dtoMapper = dtoMapper;
+    public AbstractDAOImpl(String table, RowMapper<MODEL> rowMapper) {
+        this.rowMapper = rowMapper;
         this.table = table;
     }
 
     @Override
     public List<MODEL> getAll(Long id) {
-        return jdbcTemplate.query("select * from " + table, modelMapper.getRowMapper());
+        return jdbcTemplate.query("select * from " + table, rowMapper);
     }
     @Override
     public List<MODEL> getAllByColumn(String column, Object value) {
         return jdbcTemplate.query("select * from " + table
                         + " where " + column + " = :value",
-                Map.of("value", value) , modelMapper.getRowMapper());
+                Map.of("value", value) , rowMapper);
     }
     @Override
     public MODEL getFirstByColumn(String column, Object value) {
         return jdbcTemplate.queryForObject("select * from " + table
                         + " where " + column + " = :value limit 1",
-                Map.of("value", value), modelMapper.getRowMapper());
+                Map.of("value", value), rowMapper);
     }
-    @Override
-    public void create(DTO dto) {
+    public<DTO> void create(JdbcMapper.forDTO<DTO> dtoMapper, DTO dto) {
         jdbcTemplate.update("insert into " + table +
-                " (" + this.dtoMapper.getColumns() + ") " +
-                "values (" + dtoMapper.getValues() + ")", dtoMapper.getParams(dto));
+                " (" + dtoMapper.columns + ") " +
+                "values (" + dtoMapper.values + ")", dtoMapper.getParams(dto));
     }
 
 }
@@ -98,20 +97,34 @@ public abstract class AbstractDAOImpl<MODEL, DTO> implements AbstractDAO<MODEL, 
 
 ```java
 @Repository
-public class TestDAOImpl extends AbstractDAOImpl<Test, TestDTO> implements TestDAO {
+public class TestDAOImpl extends AbstractDAOImpl<Test> implements TestDAO {
+
+    private static final RowMapper<Test> rowMapper =
+            JdbcMapper.generateRowMapper( Test.class,
+                    "id", "id",
+                    "name", "sname",
+                    "message", "smessage");
+
     public TestDAOImpl() {
-        super("test_table",
-                new JdbcMapper.forModel<>(Test.class,
-                        "id", "id",
-                        "name", "sname",
-                        "message", "smessage"
-                ),
-                new JdbcMapper.forDTO<>(TestDTO.class,
-                        "name", "sname",
-                        "message", "smessage"
-                )
-        );
+        super("test", rowMapper);
+
     }
+}
+```
+
+```
+@Data
+public class TestDTO {
+
+    private String name;
+    private String message;
+
+    public final static JdbcMapper.forDTO<TestDTO> mapper =
+            new JdbcMapper.forDTO<>(TestDTO.class,
+                    "name", "sname",
+                    "message", "smessage"
+            );
+
 }
 ```
 
@@ -137,8 +150,9 @@ public class TestServiceImpl implements TestService {
     }
     @Override
     public void createTest(TestDTO dto) {
-        testDAO.create(dto);
+        testDAO.create(dto.mapper, dto);
     }
 }
 ```
 
+In addition, you can learn more about FieldMapper in tests [here](src/test/java/com/github/lemerch/columbus/fieldmapper)
