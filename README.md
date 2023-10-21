@@ -111,7 +111,7 @@ public class TestDAOImpl extends AbstractDAOImpl<Test> implements TestDAO {
 }
 ```
 
-```
+```java
 @Data
 public class TestDTO {
 
