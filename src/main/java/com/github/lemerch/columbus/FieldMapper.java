@@ -40,6 +40,17 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * <h3>Field Mapper is needed for mapping your objects or any other JavaBean type classes</h3>
+ * <p></p>
+ * <p>By default, the {@link FieldMapper#map(Object, Class)} method copies values based on the field names, if the field names are identical, but the type is different, then FieldMapper will throw an {@link ColumbusException}</p>
+ * <p>For additional control, you can use the {@link FieldMapper#withSchema(String...)} methods through which you can bind the `from` fields to the `to` fields. However, their type must match</p>
+ * <p>In addition, if you need a reliable check that your `to` object will not contain null values, then you can use the {@link FieldMapper#withNotNullPolicy()} method</p>
+ * <p></p>
+ * <h3>Warrning</h3>
+ * <p>All these additional settings are valid until you run map</p>
+ * <p>Therefore, I do not advise making it static or using a single FieldMapper in multiple threads. Create it inside each thread. This class weighs little and cleans itself, so it won't bother you</p>
+ */
 public class FieldMapper {
 
     private Map<String, String> schema = new HashMap<>();
@@ -47,15 +58,39 @@ public class FieldMapper {
 
     public FieldMapper() {}
 
+    /**
+     * This method controls that the fields of your object are `to` so that they are not null
+     *
+     * @return current FieldMapper
+     */
     public FieldMapper withNotNullPolicy() {
         this.notNullPolicy = true;
         return this;
     }
 
+    /**
+     * <p>
+     * This method allows you to set the scheme of linking the fields of the `from` class to the `to` class. If their type is not identical,
+     * the {@link FieldMapper#map(Object, Class)} method throws an {@link ColumbusException}
+     * </p>
+     *
+     * @param map Map< FROM, TO > fields
+     * @return current FIeldMapper
+     */
     public FieldMapper withSchema(Map<String, String> map) {
         schema.putAll(map);
         return this;
     }
+
+    /**
+     * <p>
+     * This method allows you to set the scheme of linking the fields of the `from` class to the `to` class. If their type is not identical,
+     * the {@link FieldMapper#map(Object, Class)} method throws an {@link ColumbusException}
+     * </p>
+     *
+     * @param from$to Map< FROM, TO > fields
+     * @return current FIeldMapper
+     */
     public FieldMapper withSchema(String... from$to) {
         if (from$to.length % 2 != 0) {
             throw new ColumbusException("The number of from$to values must be even");
@@ -68,13 +103,27 @@ public class FieldMapper {
         }
         return this;
     }
+
+    /**
+     *
+     * <p>This method is your `to` object and fills it with fields from the `from` object</p>
+     *
+     *
+     * @param from object the object to be mapped to `to` class
+     * @param to the class that will be created and populated based on the `from` object
+     * @return `to` object
+     * @param <FROM>
+     * @param <TO>
+     */
     public<FROM, TO> TO map(FROM from, Class<TO> to) {
 
         Field[] fromFields = from.getClass().getDeclaredFields();
         Field[] toFields = to.getDeclaredFields();
 
+        // check if schema key / values are exist in `from` / `to` classes
         schemaCheck(fromFields, toFields);
 
+        // create new instance of `to` class
         TO result;
         try {
             result = to.getConstructor().newInstance();
@@ -82,39 +131,25 @@ public class FieldMapper {
             throw new ColumbusException("Default constructor not found in class `" + to + "`");
         }
 
-
+        // inject `from` values into `to` (result) fields
         handle(from, to, result, fromFields, toFields);
 
+        // clear additional data
         this.notNullPolicy = false;
         this.schema = new HashMap<>();
 
         return result;
     }
 
-    private<FROM, TO> void inject(
-            FROM from, Class<TO> to, TO result, Field toField, Method fromGetter
-    ) {
-        Method toSetter;
-        try {
-            toSetter = to.getMethod(Utils.getSetterByFieldName(toField.getName()), toField.getType());
-        } catch (NoSuchMethodException e) {
-            throw new ColumbusException(e);
-        }
-
-        try {
-            toSetter.invoke(result, fromGetter.invoke(from));
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new ColumbusException(e);
-        }
-
-    }
     private<FROM, TO> void handle(FROM from, Class<TO> to, TO result, Field[] fromFields, Field[] toFields) {
 
+        // for not null policy
         int toFieldsLen = toFields.length;
         int toFieldsLenCounter = 0;
 
         for (Field fromField : fromFields) {
 
+            // schema data
             boolean schemaWas = false;
             String schemaVal = "";
 
@@ -132,8 +167,9 @@ public class FieldMapper {
             }
 
             for (Field toField : toFields) {
-                if (schemaWas && toField.getName().equals(schemaVal)) {
 
+                // schema fields found
+                if (schemaWas && toField.getName().equals(schemaVal)) {
                     if (fromField.getType().equals(toField.getType())) {
                         toFieldsLenCounter++;
                         inject(from, to, result, toField, fromGetter);
@@ -143,9 +179,15 @@ public class FieldMapper {
                                 toField.getName() + "` type of `" + toField.getType() + "`");
                     }
                     break;
+
+                // `from` field found, but `to`... doesn't
                 }else if (schemaWas) continue;
 
+                // if `from` field doesn't contains in schema
+                // but `to` field already set from schema
+                if (this.schema.containsValue(toField.getName())) continue;
 
+                // if `from` field doesn't contains in schema
                 if (fromField.getName().equals(toField.getName())) {
                     if (fromField.getType().equals(toField.getType())) {
                         toFieldsLenCounter++;
@@ -166,6 +208,24 @@ public class FieldMapper {
             throw new ColumbusException("Not Null Policy Exception, some fields in `to object` are null, please check fields names, types or schema");
     }
 
+    // boilerplate
+    private<FROM, TO> void inject(
+            FROM from, Class<TO> to, TO result, Field toField, Method fromGetter
+    ) {
+        Method toSetter;
+        try {
+            toSetter = to.getMethod(Utils.getSetterByFieldName(toField.getName()), toField.getType());
+        } catch (NoSuchMethodException e) {
+            throw new ColumbusException(e);
+        }
+
+        try {
+            toSetter.invoke(result, fromGetter.invoke(from));
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new ColumbusException(e);
+        }
+
+    }
     private void schemaCheck(Field[] fromFields, Field[] toFields) {
         if (this.schema.isEmpty()) return;
 

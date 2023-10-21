@@ -44,9 +44,23 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
+/**
+ * <h3>this class is a great tool for creating universal dao classes in your project</h3>
+ * <p>JdbcTemplate does not have a constructor, but it does have a static {@link JdbcMapper#generateRowMapper(Class, String...)} method with which you can generate a RowMapper for your db model</p>
+ * <p>In addition, it has a {@link JdbcMapper.forDTO} class that will help you a lot for abstract repositories.</p>
+ */
 public class JdbcMapper {
 
     private JdbcMapper() {}
+
+    /**
+     * This method will generate you a {@link RowMapper} for the above model
+     *
+     * @param clazz MyModel.class
+     * @param model$db Map of < ModelField, DBField >
+     * @return RowMapper< MyModel >
+     * @param <MODEL>
+     */
     public static<MODEL> RowMapper<MODEL> generateRowMapper(Class<MODEL> clazz, String... model$db) {
         if (model$db.length % 2 != 0) {
             throw new ColumbusException("The number of model$db (key-value) must be even");
@@ -78,7 +92,7 @@ public class JdbcMapper {
                 try {
                     obj = clazz.getConstructor().newInstance();
                 } catch (NoSuchMethodException e) {
-                    throw new ColumbusException("Constructor not found in class `" + e + "`");
+                    throw new ColumbusException("Default constructor not found in class `" + clazz + "`");
                 } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
                     throw new ColumbusException(e);
                 }
@@ -105,6 +119,11 @@ public class JdbcMapper {
         };
     }
 
+    /**
+     * <p>The jdbctemplate class.forDTO is perhaps one of the main classes in this project. At least because of him, I started writing this library :)</p>
+     * <p>The basis of this class is the constructor - {@link forDTO#forDTO(Class, String...)} and the {@link forDTO#getParams(Object)} method</p>
+     * @param <T>
+     */
     public static class forDTO<T> {
         /**
          * insert into `table` (columns) values(...)
@@ -145,6 +164,12 @@ public class JdbcMapper {
             this.values = valueBuilder.toString();
         }
 
+        /**
+         * <p>This method generates a Map <fieldName, FieldValue>, which you should use in the insert request NamedJdbcTemplate</p>
+         *
+         * @param dto
+         * @return Map< fieldName, fieldValue >
+         */
         public Map<String, Object> getParams(T dto) {
             Map<String, Object> params = new HashMap<>();
             Class<?> clazz = dto.getClass();
