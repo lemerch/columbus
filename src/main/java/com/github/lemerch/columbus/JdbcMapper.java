@@ -124,7 +124,7 @@ public class JdbcMapper {
      * <p>The basis of this class is the constructor - {@link forDTO#forDTO(Class, String...)} and the {@link forDTO#getParams(Object)} method</p>
      * @param <T>
      */
-    public static class forDTO<T> {
+    public static class forDTO<DTO> {
         /**
          * insert into `table` (columns) values(...)
          */
@@ -133,7 +133,7 @@ public class JdbcMapper {
          * insert into `table`(...) values(values)
          */
         public final String values;
-        public forDTO(Class<T> clazz, String... dto$db) {
+        public forDTO(Class<DTO> clazz, String... dto$db) {
             if (dto$db.length % 2 != 0) {
                 throw new ColumbusException("The number of model$db values must be even");
             } else if (dto$db.length == 0) {
@@ -170,7 +170,7 @@ public class JdbcMapper {
          * @param dto
          * @return Map< fieldName, fieldValue >
          */
-        public Map<String, Object> getParams(T dto) {
+        public Map<String, Object> getParams(DTO dto) {
             Map<String, Object> params = new HashMap<>();
             Class<?> clazz = dto.getClass();
             for (Field field : clazz.getDeclaredFields()) {
