@@ -155,3 +155,12 @@ public class TestServiceImpl implements TestService {
 ```
 
 In addition, you can learn more about FieldMapper in tests [here](src/test/java/com/github/lemerch/columbus/fieldmapper)
+
+
+```
+Мой кров стал — небо голубое,
+Корабль стал — родина моя:
+Я с ним тогда не расставался
+...
+                  «Моряк» Лермонтов
+```
