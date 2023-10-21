@@ -18,7 +18,7 @@
 ```
 
 ## About
-This library will help you create universal repositories based on NamedJdbcTemplate, generate RowMapper for your models, and link your models to dto or dto to dto.
+This library will help you create universal repositories based on NamedParameterJdbcTemplate, generate RowMapper for your models, and link your models to dto or dto to dto.
 
 ...dto :)
 
