@@ -1,10 +1,18 @@
-package com.github.lemerch.columbus.fieldmapper.schema.beans;
+package com.github.lemerch.columbus.fieldmapper.beans;
 
-public class Bart {
+public class Homer {
     private Integer id;
-    private String shirts;
+    private String duff;
     private String burger;
     private String spiderpig;
+
+    public Homer() {}
+    public Homer(Integer id, String duff, String burger, String spiderpig) {
+        this.id = id;
+        this.duff = duff;
+        this.burger = burger;
+        this.spiderpig = spiderpig;
+    }
 
     public Integer getId() {
         return id;
@@ -14,12 +22,12 @@ public class Bart {
         this.id = id;
     }
 
-    public String getShirts() {
-        return shirts;
+    public String getDuff() {
+        return duff;
     }
 
-    public void setShirts(String shirts) {
-        this.shirts = shirts;
+    public void setDuff(String duff) {
+        this.duff = duff;
     }
 
     public String getBurger() {

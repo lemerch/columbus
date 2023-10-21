@@ -1,4 +1,4 @@
-package com.github.lemerch.columbus.fieldmapper.schema.beans.linearfirst;
+package com.github.lemerch.columbus.fieldmapper.beans.linearfirst;
 
 import java.math.BigDecimal;
 

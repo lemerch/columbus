@@ -47,80 +47,72 @@ import java.util.TreeMap;
 public class JdbcMapper {
 
     private JdbcMapper() {}
-    public static class forModel<T> {
-        /**
-         * This map must be as < model field name, db field name >
-         */
-        public final RowMapper<T> rowMapper;
-        public forModel(Class<T> clazz, String... model$db) {
-            if (model$db.length % 2 != 0) {
-                throw new ColumbusException("The number of model$db values must be even");
-            } else if (model$db.length == 0) {
-                throw new ColumbusException("Size of map must be more then 0");
+    public static<MODEL> RowMapper<MODEL> generateRowMapper(Class<MODEL> clazz, String... model$db) {
+        if (model$db.length % 2 != 0) {
+            throw new ColumbusException("The number of model$db (key-value) must be even");
+        } else if (model$db.length == 0) {
+            throw new ColumbusException("Size of Map must be greater than 0");
+        }
+
+        TreeMap<String, String> map = new TreeMap<>();
+
+        for (int i = 0; i < model$db.length; i+=2) {
+            map.put(model$db[i], model$db[i + 1]);
+
+            try {
+                clazz.getDeclaredField(model$db[i]);
+            } catch (NoSuchFieldException e) {
+                throw new ColumbusException(e);
             }
+        }
+        return generateRowMapper(clazz, map);
+    }
+    private static<MODEL> RowMapper<MODEL> generateRowMapper(Class<MODEL> clazz, TreeMap<String, String> map) {
+        return new RowMapper<MODEL>() {
+            @Override
+            public MODEL mapRow(ResultSet rs, int rowNum) throws SQLException {
 
-            TreeMap<String, String> map = new TreeMap<>();
-
-            for (int i = 0; i < model$db.length; i+=2) {
-                map.put(model$db[i], model$db[i + 1]);
+                // init - must be default constructor
+                MODEL obj;
 
                 try {
-                    clazz.getDeclaredField(model$db[i]);
-                } catch (NoSuchFieldException e) {
+                    obj = clazz.getConstructor().newInstance();
+                } catch (NoSuchMethodException e) {
+                    throw new ColumbusException("Constructor not found in class `" + e + "`");
+                } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
                     throw new ColumbusException(e);
                 }
-            }
-            this.rowMapper = generateRowMapper(clazz, map);
-        }
 
-        private RowMapper<T> generateRowMapper(Class<T> clazz, TreeMap<String, String> map) {
-            return new RowMapper<T>() {
-                @Override
-                public T mapRow(ResultSet rs, int rowNum) throws SQLException {
+                // iterate fields, get its setters,
+                // and set value from rs.getObject(map.get(field name))
+                for (Field field : clazz.getDeclaredFields()) {
 
-                    // init - must be default constructor
-                    T obj;
-
+                    Method setter;
                     try {
-                        obj = clazz.getConstructor().newInstance();
+                        setter = clazz.getMethod(Utils.getSetterByFieldName(field.getName()), field.getType());
+
                     } catch (NoSuchMethodException e) {
-                        throw new ColumbusException("Constructor not found" + e);
-                    } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
                         throw new ColumbusException(e);
                     }
-
-                    // iterate fields, get its setters,
-                    // and set value from rs.getObject(map.get(field name))
-                    for (Field field : clazz.getDeclaredFields()) {
-                        Class<?> type;
-                        String name;
-                        Method setter;
-                        try {
-                            type = field.getType();
-                            name = field.getName();
-                            setter = clazz.getMethod(Utils.getSetterByFieldName(name), type);
-
-                        } catch (NoSuchMethodException e) {
-                            throw new ColumbusException(e);
-                        }
-                        try {
-                            setter.invoke(obj, rs.getObject(map.get(name)));
-                        } catch (IllegalAccessException | InvocationTargetException e) {
-                            throw new ColumbusException(e);
-                        }
+                    try {
+                        setter.invoke(obj, rs.getObject(map.get(field.getName())));
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        throw new ColumbusException(e);
                     }
-
-                    return obj;
                 }
-            };
-        }
+                return obj;
+            }
+        };
     }
 
-
     public static class forDTO<T> {
-        // db, ...
+        /**
+         * insert into `table` (columns) values(...)
+         */
         public final String columns;
-        // :dto, ...
+        /**
+         * insert into `table`(...) values(values)
+         */
         public final String values;
         public forDTO(Class<T> clazz, String... dto$db) {
             if (dto$db.length % 2 != 0) {
@@ -140,12 +132,12 @@ public class JdbcMapper {
                      } catch (NoSuchFieldException e) {
                          throw new ColumbusException(e);
                      }
-                     if (i == dto$db.length-2) columnBuilder.append(dto$db[i]);
-                     else  columnBuilder.append(dto$db[i]).append(", ");
+                     if (i == dto$db.length-2) valueBuilder.append(":").append(dto$db[i]);
+                     else valueBuilder.append(":").append(dto$db[i]).append(", ");
                  // values - db(this.columns)
                  }else {
-                     if (i == dto$db.length-1) valueBuilder.append(":").append(dto$db[i]);
-                     else valueBuilder.append(":").append(dto$db[i]).append(", ");
+                     if (i == dto$db.length-1) columnBuilder.append(dto$db[i]);
+                     else columnBuilder.append(dto$db[i]).append(", ");
                  }
 
             }
@@ -157,17 +149,17 @@ public class JdbcMapper {
             Map<String, Object> params = new HashMap<>();
             Class<?> clazz = dto.getClass();
             for (Field field : clazz.getDeclaredFields()) {
-                String name = field.getName();
+
                 Method getter;
 
                 try {
-                    getter = clazz.getMethod(Utils.getGetterByFieldName(name));
+                    getter = clazz.getMethod(Utils.getGetterByFieldName(field.getName()));
                 } catch (NoSuchMethodException e) {
                     throw new ColumbusException(e);
                 }
 
                 try {
-                    params.put(name, getter.invoke(dto));
+                    params.put(field.getName(), getter.invoke(dto));
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     throw new ColumbusException(e);
                 }

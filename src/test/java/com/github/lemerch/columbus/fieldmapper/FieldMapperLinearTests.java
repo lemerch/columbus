@@ -1,11 +1,11 @@
-package com.github.lemerch.columbus.fieldmapper.schema;
+package com.github.lemerch.columbus.fieldmapper;
 
 import com.github.lemerch.columbus.ColumbusException;
 import com.github.lemerch.columbus.FieldMapper;
-import com.github.lemerch.columbus.fieldmapper.schema.beans.linearfirst.FirstDTO;
-import com.github.lemerch.columbus.fieldmapper.schema.beans.linearfirst.SecondDTO;
-import com.github.lemerch.columbus.fieldmapper.schema.beans.linearsecond.EasterBunny;
-import com.github.lemerch.columbus.fieldmapper.schema.beans.linearsecond.Scott;
+import com.github.lemerch.columbus.fieldmapper.beans.linearfirst.FirstDTO;
+import com.github.lemerch.columbus.fieldmapper.beans.linearfirst.SecondDTO;
+import com.github.lemerch.columbus.fieldmapper.beans.linearsecond.EasterBunny;
+import com.github.lemerch.columbus.fieldmapper.beans.linearsecond.Scott;
 import org.junit.Test;
 
 import java.math.BigDecimal;

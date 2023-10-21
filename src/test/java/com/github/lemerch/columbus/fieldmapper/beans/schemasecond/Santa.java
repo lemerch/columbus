@@ -1,4 +1,4 @@
-package com.github.lemerch.columbus.fieldmapper.schema.beans.schemasecond;
+package com.github.lemerch.columbus.fieldmapper.beans.schemasecond;
 
 public class Santa {
     public String bookGift;

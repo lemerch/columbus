@@ -1,11 +1,11 @@
-package com.github.lemerch.columbus.fieldmapper.schema;
+package com.github.lemerch.columbus.fieldmapper;
 
 import com.github.lemerch.columbus.ColumbusException;
 import com.github.lemerch.columbus.FieldMapper;
-import com.github.lemerch.columbus.fieldmapper.schema.beans.schemafirst.One;
-import com.github.lemerch.columbus.fieldmapper.schema.beans.schemafirst.Two;
-import com.github.lemerch.columbus.fieldmapper.schema.beans.schemasecond.Andy;
-import com.github.lemerch.columbus.fieldmapper.schema.beans.schemasecond.Santa;
+import com.github.lemerch.columbus.fieldmapper.beans.schemafirst.One;
+import com.github.lemerch.columbus.fieldmapper.beans.schemafirst.Two;
+import com.github.lemerch.columbus.fieldmapper.beans.schemasecond.Andy;
+import com.github.lemerch.columbus.fieldmapper.beans.schemasecond.Santa;
 import org.junit.Test;
 
 import java.util.Map;

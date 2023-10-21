@@ -1,8 +1,8 @@
-package com.github.lemerch.columbus.fieldmapper.schema;
+package com.github.lemerch.columbus.fieldmapper;
 
 import com.github.lemerch.columbus.FieldMapper;
-import com.github.lemerch.columbus.fieldmapper.schema.beans.Bart;
-import com.github.lemerch.columbus.fieldmapper.schema.beans.Homer;
+import com.github.lemerch.columbus.fieldmapper.beans.Bart;
+import com.github.lemerch.columbus.fieldmapper.beans.Homer;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

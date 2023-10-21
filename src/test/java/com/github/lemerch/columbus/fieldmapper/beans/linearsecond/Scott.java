@@ -1,4 +1,4 @@
-package com.github.lemerch.columbus.fieldmapper.schema.beans.linearsecond;
+package com.github.lemerch.columbus.fieldmapper.beans.linearsecond;
 
 public class Scott {
     private Long gitft;

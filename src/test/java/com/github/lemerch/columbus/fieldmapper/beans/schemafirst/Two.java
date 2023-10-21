@@ -1,4 +1,4 @@
-package com.github.lemerch.columbus.fieldmapper.schema.beans.schemafirst;
+package com.github.lemerch.columbus.fieldmapper.beans.schemafirst;
 
 public class Two {
     private String sfirst;
