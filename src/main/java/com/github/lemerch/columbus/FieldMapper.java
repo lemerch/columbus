@@ -10,12 +10,12 @@ import java.util.Map;
 public class FieldMapper {
 
     private Map<String, String> schema = new HashMap<>();
-    private boolean notNullPolicy = false;
+    private boolean noNullPolicy = false;
 
     public FieldMapper() {}
 
-    public FieldMapper withNotNullPolicy() {
-        this.notNullPolicy = true;
+    public FieldMapper withNoNullPolicy() {
+        this.noNullPolicy = true;
         return this;
     }
 
@@ -43,16 +43,16 @@ public class FieldMapper {
         try {
             result = to.getConstructor().newInstance();
         } catch (InstantiationException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-            throw new RuntimeException("Default constructor not found in class `" + to + "`");
+            throw new ColumbusException("Default constructor not found in class `" + to + "`");
         }
 
         schemaInject(from, to, result);
 
         defaultInject(from, to, result);
 
-        if (this.notNullPolicy) checkNotNull(result);
+        if (this.noNullPolicy) checkNotNull(result);
 
-        this.notNullPolicy = false;
+        this.noNullPolicy = false;
         this.schema = new HashMap<>();
 
         return result;
@@ -64,7 +64,7 @@ public class FieldMapper {
             try {
                 field = to.getDeclaredField(this.schema.get(key));
             } catch (NoSuchFieldException e) {
-                throw new RuntimeException(e);
+                throw new ColumbusException(e);
             }
             Class<?> type = field.getType();
             String name = field.getName();
@@ -75,12 +75,12 @@ public class FieldMapper {
                 toSetter = to.getMethod(Utils.getSetterByFieldName(name), type);
                 fromGetter = from.getClass().getMethod(Utils.getGetterByFieldName(key));
             } catch (NoSuchMethodException e) {
-                throw new RuntimeException(e);
+                throw new ColumbusException(e);
             }
             try {
                 toSetter.invoke(result, fromGetter.invoke(from));
             } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(e);
+                throw new ColumbusException(e);
             }
         }
     }
@@ -94,7 +94,7 @@ public class FieldMapper {
             try {
                 fromGetter = from.getClass().getMethod(Utils.getGetterByFieldName(fromName));
             } catch (NoSuchMethodException e) {
-                throw new RuntimeException(e);
+                throw new ColumbusException(e);
             }
 
 
@@ -108,13 +108,13 @@ public class FieldMapper {
                     try {
                         toSetter = to.getMethod(Utils.getSetterByFieldName(fromName), toType);
                     } catch (NoSuchMethodException e) {
-                        throw new RuntimeException(e);
+                        throw new ColumbusException(e);
                     }
 
                     try {
                         toSetter.invoke(result, fromGetter.invoke(from));
                     } catch (IllegalAccessException | InvocationTargetException e) {
-                        throw new RuntimeException(e);
+                        throw new ColumbusException(e);
                     }
                 }
             }
@@ -128,7 +128,7 @@ public class FieldMapper {
             try {
                 clazz.getDeclaredField(key);
             } catch (NoSuchFieldException e) {
-                throw new RuntimeException ("Filed with name `" + key + "` not found in `" + from + "`");
+                throw new ColumbusException("Filed with name `" + key + "` not found in `" + from + "`");
             }
         }
     }
@@ -139,7 +139,7 @@ public class FieldMapper {
             try {
                 to.getDeclaredField(value);
             } catch (NoSuchFieldException e) {
-                throw new RuntimeException ("Filed with name `" + value + "` not found in `" + to + "`");
+                throw new ColumbusException("Filed with name `" + value + "` not found in `" + to + "`");
             }
         }
     }
@@ -151,15 +151,15 @@ public class FieldMapper {
             try {
                 getter = clazz.getMethod(Utils.getGetterByFieldName(field.getName()));
             } catch (NoSuchMethodException e) {
-                throw new RuntimeException(e);
+                throw new ColumbusException(e);
             }
 
             try {
                 if (getter.invoke(result) == null) {
-                    throw new RuntimeException("Field `" + field.getName() + "` is null, please check `from` object or your schema");
+                    throw new ColumbusException("Field `" + field.getName() + "` is null, please check `from` object or your schema");
                 }
             } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(e);
+                throw new ColumbusException(e);
             }
 
         }
