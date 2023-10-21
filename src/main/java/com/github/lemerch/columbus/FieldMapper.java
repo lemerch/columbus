@@ -1,3 +1,36 @@
+/**
+ * Copyright 2023 Dmitry Terakov
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ *
+ * \ \ .       .             \                  O’er the glad waters of the dark
+ * . \ \       |\            / \_               blue sea,
+ * \ . .       | \            \                 Our thoughts as boundless, and
+ * . \         |  \            \                our souls as free,
+ *  .          |   \           /                Far as the breeze can bear, the
+ *             |    \          \                billows foam,
+ *             |     \                          Survey our empire, and behold
+ *             |      \                         our home.
+ *             |       \       ____O                             «The Corsair». L. Byron
+ *             |        \     .' ./
+ *             |   _.,-~"\  .',/~'
+ *             &lt;-~"   _.,-~" ~ |
+ * ^"~-,._.,-~"^"~-,._\       /,._.,-~"^"~-,._.,-~"^"~-,._
+ * ~"^"~-,._.,-~"^"~-,._.,-~"^"~-,._.,-~"^"~-,._.,-~"^"~-,._
+ * ^"~-,._.,-~"^"~-,._.,-~"^"~-,._.,-~"^"~-,._.,-~"^"~-,._
+ * ~-,._.,-~"^"~-,._.,-~"^"~-,._.,-~"^"~-,._.,-~"^ COLUMBUS - the discoverer of convenience mapping
+ */
 package com.github.lemerch.columbus;
 
 
@@ -10,12 +43,12 @@ import java.util.Map;
 public class FieldMapper {
 
     private Map<String, String> schema = new HashMap<>();
-    private boolean noNullPolicy = false;
+    private boolean notNullPolicy = false;
 
     public FieldMapper() {}
 
-    public FieldMapper withNoNullPolicy() {
-        this.noNullPolicy = true;
+    public FieldMapper withNotNullPolicy() {
+        this.notNullPolicy = true;
         return this;
     }
 
@@ -36,8 +69,11 @@ public class FieldMapper {
         return this;
     }
     public<FROM, TO> TO map(FROM from, Class<TO> to) {
-        checkFrom(from);
-        checkTo(to);
+
+        Field[] fromFields = from.getClass().getDeclaredFields();
+        Field[] toFields = to.getDeclaredFields();
+
+        schemaCheck(fromFields, toFields);
 
         TO result;
         try {
@@ -46,122 +82,108 @@ public class FieldMapper {
             throw new ColumbusException("Default constructor not found in class `" + to + "`");
         }
 
-        schemaInject(from, to, result);
 
-        defaultInject(from, to, result);
+        handle(from, to, result, fromFields, toFields);
 
-        if (this.noNullPolicy) checkNotNull(result);
-
-        this.noNullPolicy = false;
+        this.notNullPolicy = false;
         this.schema = new HashMap<>();
 
         return result;
     }
 
-    private<FROM, TO> void schemaInject(FROM from, Class<TO> to, TO result) {
-        for (String key : this.schema.keySet()) {
-            Field field;
-            try {
-                field = to.getDeclaredField(this.schema.get(key));
-            } catch (NoSuchFieldException e) {
-                throw new ColumbusException(e);
-            }
-            Class<?> type = field.getType();
-            String name = field.getName();
-            Method toSetter;
-            Method fromGetter;
-
-            try {
-                toSetter = to.getMethod(Utils.getSetterByFieldName(name), type);
-                fromGetter = from.getClass().getMethod(Utils.getGetterByFieldName(key));
-            } catch (NoSuchMethodException e) {
-                throw new ColumbusException(e);
-            }
-            try {
-                toSetter.invoke(result, fromGetter.invoke(from));
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new ColumbusException(e);
-            }
+    private<FROM, TO> void inject(
+            FROM from, Class<TO> to, TO result, Field toField, Method fromGetter
+    ) {
+        Method toSetter;
+        try {
+            toSetter = to.getMethod(Utils.getSetterByFieldName(toField.getName()), toField.getType());
+        } catch (NoSuchMethodException e) {
+            throw new ColumbusException(e);
         }
-    }
-    private<FROM, TO> void defaultInject(FROM from, Class<TO> to, TO result) {
-        for (Field fromField : from.getClass().getDeclaredFields()) {
-            String fromName = fromField.getName();
-            if (this.schema.containsKey(fromName)) continue;
 
-            Class<?> fromType = fromField.getType();
+        try {
+            toSetter.invoke(result, fromGetter.invoke(from));
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new ColumbusException(e);
+        }
+
+    }
+    private<FROM, TO> void handle(FROM from, Class<TO> to, TO result, Field[] fromFields, Field[] toFields) {
+
+        int toFieldsLen = toFields.length;
+        int toFieldsLenCounter = 0;
+
+        for (Field fromField : fromFields) {
+
+            boolean schemaWas = false;
+            String schemaVal = "";
+
+
+            if (this.schema.containsKey(fromField.getName())) {
+                schemaWas = true;
+                schemaVal = this.schema.get(fromField.getName());
+            }
+
             Method fromGetter;
             try {
-                fromGetter = from.getClass().getMethod(Utils.getGetterByFieldName(fromName));
+                fromGetter = from.getClass().getMethod(Utils.getGetterByFieldName(fromField.getName()));
             } catch (NoSuchMethodException e) {
                 throw new ColumbusException(e);
             }
 
+            for (Field toField : toFields) {
+                if (schemaWas && toField.getName().equals(schemaVal)) {
 
-            for (Field toField : to.getDeclaredFields()) {
-                String toName = toField.getName();
-                if (this.schema.containsValue(toName)) continue;
-
-                Class<?> toType = toField.getType();
-                Method toSetter;
-                if (fromName.equals(toName) && fromType.equals(toType)) {
-                    try {
-                        toSetter = to.getMethod(Utils.getSetterByFieldName(fromName), toType);
-                    } catch (NoSuchMethodException e) {
-                        throw new ColumbusException(e);
+                    if (fromField.getType().equals(toField.getType())) {
+                        toFieldsLenCounter++;
+                        inject(from, to, result, toField, fromGetter);
+                    } else {
+                        throw new ColumbusException("Schema cast type exception from `" +
+                                fromField.getName() + "` type of `" + fromField.getType() + "` to `" +
+                                toField.getName() + "` type of `" + toField.getType() + "`");
                     }
+                    break;
+                }else if (schemaWas) continue;
 
-                    try {
-                        toSetter.invoke(result, fromGetter.invoke(from));
-                    } catch (IllegalAccessException | InvocationTargetException e) {
-                        throw new ColumbusException(e);
+
+                if (fromField.getName().equals(toField.getName())) {
+                    if (fromField.getType().equals(toField.getType())) {
+                        toFieldsLenCounter++;
+                        inject(from, to, result, toField, fromGetter);
+                    } else {
+                        throw new ColumbusException("Field cast type exception from `" +
+                                fromField.getName() + "` type of `" + fromField.getType() + "` to `" +
+                                toField.getName() + "` type of `" + toField.getType() + "`");
+
                     }
                 }
-            }
-        }
+
+            } // for ( toField )
+
+        } // for ( fromField )
+
+        if (this.notNullPolicy && toFieldsLen != toFieldsLenCounter)
+            throw new ColumbusException("Not Null Policy Exception, some fields in `to object` are null, please check fields names, types or schema");
     }
-    private<FROM> void checkFrom(FROM from) {
+
+    private void schemaCheck(Field[] fromFields, Field[] toFields) {
         if (this.schema.isEmpty()) return;
 
-        Class<?> clazz = from.getClass();
         for (String key : schema.keySet()) {
-            try {
-                clazz.getDeclaredField(key);
-            } catch (NoSuchFieldException e) {
-                throw new ColumbusException("Filed with name `" + key + "` not found in `" + from + "`");
+            boolean fromCorrect = false;
+            boolean toCorrect = false;
+            for (Field fromField : fromFields) {
+                if (key.equals(fromField.getName())) fromCorrect = true;
+            }
+            for (Field toField : toFields) {
+                if (schema.get(key).equals(toField.getName())) toCorrect = true;
+            }
+            if (!fromCorrect) {
+                throw new ColumbusException ("Filed with name `" + key + "` not found in `from` object");
+            } else if (!toCorrect) {
+                throw new ColumbusException ("Filed with name `" + schema.get(key) + "` not found in `to` class");
             }
         }
     }
-    private<TO> void checkTo(Class<TO> to) {
-        if (this.schema.isEmpty()) return;
 
-        for (String value : schema.values()) {
-            try {
-                to.getDeclaredField(value);
-            } catch (NoSuchFieldException e) {
-                throw new ColumbusException("Filed with name `" + value + "` not found in `" + to + "`");
-            }
-        }
-    }
-
-    private<TO> void checkNotNull(TO result) {
-        Class<?> clazz = result.getClass();
-        for (Field field : clazz.getDeclaredFields()) {
-            Method getter;
-            try {
-                getter = clazz.getMethod(Utils.getGetterByFieldName(field.getName()));
-            } catch (NoSuchMethodException e) {
-                throw new ColumbusException(e);
-            }
-
-            try {
-                if (getter.invoke(result) == null) {
-                    throw new ColumbusException("Field `" + field.getName() + "` is null, please check `from` object or your schema");
-                }
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new ColumbusException(e);
-            }
-
-        }
-    }
 }

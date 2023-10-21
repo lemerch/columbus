@@ -1,4 +1,4 @@
-package com.github.lemerch.columbus.beans.filed;
+package com.github.lemerch.columbus.fieldmapper.schema.beans.schemafirst;
 
 public class One {
     private Long id;
