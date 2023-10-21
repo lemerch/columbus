@@ -107,7 +107,6 @@ public class TestDAOImpl extends AbstractDAOImpl<Test> implements TestDAO {
 
     public TestDAOImpl() {
         super("test", rowMapper);
-
     }
 }
 ```
