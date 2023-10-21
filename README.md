@@ -18,7 +18,7 @@
 ```
 
 ## About
-This library will help you create universal repositories based on NamedJdbcTemplate, generate RowMapper for your models, and link your models to dto or dto to dto.
+This library will help you create universal repositories based on NamedParameterJdbcTemplate, generate RowMapper for your models, and link your models to dto or dto to dto.
 
 ...dto :)
 
@@ -71,7 +71,7 @@ public abstract class AbstractDAOImpl<MODEL> implements AbstractDAO<MODEL> {
     }
 
     @Override
-    public List<MODEL> getAll(Long id) {
+    public List<MODEL> getAll() {
         return jdbcTemplate.query("select * from " + table, rowMapper);
     }
     @Override
@@ -107,12 +107,11 @@ public class TestDAOImpl extends AbstractDAOImpl<Test> implements TestDAO {
 
     public TestDAOImpl() {
         super("test", rowMapper);
-
     }
 }
 ```
 
-```
+```java
 @Data
 public class TestDTO {
 
