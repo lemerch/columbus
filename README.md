@@ -71,7 +71,7 @@ public abstract class AbstractDAOImpl<MODEL> implements AbstractDAO<MODEL> {
     }
 
     @Override
-    public List<MODEL> getAll(Long id) {
+    public List<MODEL> getAll() {
         return jdbcTemplate.query("select * from " + table, rowMapper);
     }
     @Override
