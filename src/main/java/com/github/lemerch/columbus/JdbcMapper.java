@@ -38,53 +38,56 @@ import org.springframework.jdbc.core.RowMapper;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * <h3>this class is a great tool for creating universal dao classes in your project</h3>
- * <p>JdbcTemplate does not have a constructor, but it does have a static {@link JdbcMapper#generateRowMapper(Class, String...)} method with which you can generate a RowMapper for your db model</p>
- * <p>In addition, it has a {@link JdbcMapper.forDTO} class that will help you a lot for abstract repositories.</p>
+ * <h3>This class is a great tool for creating universal dao classes in your project</h3>
+ * <p>Jdbc Mapper does not have its own constructor, however it has three subclasses {@link forModel}, {@link forDTO}, {@link forContractDTO}</p>
  */
 public class JdbcMapper {
 
     private JdbcMapper() {}
 
     /**
-     * This method will generate you a {@link RowMapper} for the above model
-     *
-     * @param clazz MyModel.class
-     * @param model$db Map of < ModelField, DBField >
-     * @return RowMapper< MyModel >
+     * <h3>This class is designed to generate and store RowMapper</h3>
+     * <p>{@link RowMapper} generation occurs when an object is created, and you can take it via the {@link forModel#get()} method</p>
      * @param <MODEL>
      */
-    public static<MODEL> RowMapper<MODEL> generateRowMapper(Class<MODEL> clazz, String... model$db) {
-        if (model$db.length % 2 != 0) {
-            throw new ColumbusException("The number of model$db (key-value) must be even");
-        } else if (model$db.length == 0) {
-            throw new ColumbusException("Size of Map must be greater than 0");
-        }
+    public static class forModel<MODEL> {
 
-        TreeMap<String, String> map = new TreeMap<>();
+        private RowMapper<MODEL> rowMapper;
 
-        for (int i = 0; i < model$db.length; i+=2) {
-            map.put(model$db[i], model$db[i + 1]);
-
-            try {
-                clazz.getDeclaredField(model$db[i]);
-            } catch (NoSuchFieldException e) {
-                throw new ColumbusException(e);
+        /**
+         * This map used in {@link forContractDTO}
+         */
+        private final Map<String, String> map;
+        public forModel(Class<MODEL> clazz, String... model$db) {
+            if (model$db.length % 2 != 0) {
+                throw new ColumbusException("The number of model$db (key-value) must be even");
+            } else if (model$db.length == 0) {
+                throw new ColumbusException("Size of Map must be greater than 0");
             }
+
+            Map<String, String> map = new HashMap<>();
+
+            for (int i = 0; i < model$db.length; i+=2) {
+                map.put(model$db[i], model$db[i + 1]);
+
+                try {
+                    clazz.getDeclaredField(model$db[i]);
+                } catch (NoSuchFieldException e) {
+                    throw new ColumbusException(e);
+                }
+            }
+            this.map = map;
+            generateRowMapper(clazz, map);
         }
-        return generateRowMapper(clazz, map);
-    }
-    private static<MODEL> RowMapper<MODEL> generateRowMapper(Class<MODEL> clazz, TreeMap<String, String> map) {
-        return new RowMapper<MODEL>() {
-            @Override
-            public MODEL mapRow(ResultSet rs, int rowNum) throws SQLException {
+
+        public RowMapper<MODEL> get() { return this.rowMapper; }
+        private void generateRowMapper(Class<MODEL> clazz, Map<String, String> map) {
+            this.rowMapper = (rs, rowNum) -> {
 
                 // init - must be default constructor
                 MODEL obj;
@@ -115,14 +118,58 @@ public class JdbcMapper {
                     }
                 }
                 return obj;
+            };
+        }
+    }
+
+    /**
+     * <h3>This class will help you not to create the same type of mappers for your dto</h3>
+     *
+     * <p>To be more precise, this class allows you to generate {@link forDTO} quite efficiently based on {@link forModel} and export it to this object</p>
+     * <p>Relative efficiency is achieved by a private constructor in the {@link forDTO} class, which does not check the fields once again, because they have already been checked in the {@link forContractDTO} constructor</p>
+     */
+    public static class forContractDTO {
+        /**
+         * insert into `table` (columns) values(...)
+         */
+        public final String columns;
+        /**
+         * insert into `table`(...) values(values)
+         */
+        public final String values;
+
+        /**
+         * values of your object `dto`
+         */
+        public final Map<String, Object> params;
+
+        public<MODEL, DTO> forContractDTO(JdbcMapper.forModel<MODEL> modelMapper, DTO dto) {
+
+            // 1. generate dtoMap
+            Map<String, String> newMap = new HashMap<>();
+
+            for (String key : modelMapper.map.keySet()) {
+                try {
+                    dto.getClass().getDeclaredField(key);
+                    newMap.put(key, modelMapper.map.get(key));
+                } catch (NoSuchFieldException e) {
+                    // continue because the model can store fields that will not be in the dto
+                }
             }
-        };
+            // 2. create dtoMapper
+            forDTO<DTO> dtoMapper = (forDTO<DTO>) new forDTO<>(dto.getClass(), newMap);
+
+            // 3. export into this object
+            this.columns = dtoMapper.columns;
+            this.values = dtoMapper.values;
+            this.params = dtoMapper.getParams(dto);
+        }
     }
 
     /**
      * <p>The jdbctemplate class.forDTO is perhaps one of the main classes in this project. At least because of him, I started writing this library :)</p>
      * <p>The basis of this class is the constructor - {@link forDTO#forDTO(Class, String...)} and the {@link forDTO#getParams(Object)} method</p>
-     * @param <T>
+     * @param <DTO>
      */
     public static class forDTO<DTO> {
         /**
@@ -163,6 +210,31 @@ public class JdbcMapper {
             this.columns = columnBuilder.toString();
             this.values = valueBuilder.toString();
         }
+        private forDTO(Class<DTO> clazz, Map<String, String> dto$db) {
+
+            StringBuilder columnBuilder = new StringBuilder();
+            StringBuilder valueBuilder = new StringBuilder();
+
+            int iter = 0;
+            for (String key : dto$db.keySet()) {
+                try {
+                    clazz.getDeclaredField(key);
+                } catch (NoSuchFieldException e) {
+                    throw new ColumbusException(e);
+                }
+                if (iter == dto$db.size()-1) {
+                    valueBuilder.append(":").append(key);
+                    columnBuilder.append(dto$db.get(key));
+                }else {
+                    valueBuilder.append(":").append(key).append(", ");
+                    columnBuilder.append(dto$db.get(key)).append(", ");
+                }
+                iter++;
+            }
+
+            this.columns = columnBuilder.toString();
+            this.values = valueBuilder.toString();
+        }
 
         /**
          * <p>This method generates a Map <fieldName, FieldValue>, which you should use in the insert request NamedJdbcTemplate</p>
@@ -171,7 +243,7 @@ public class JdbcMapper {
          * @return Map< fieldName, fieldValue >
          */
         public Map<String, Object> getParams(DTO dto) {
-            Map<String, Object> params = new HashMap<>();
+            Map<String, Object> params = new TreeMap<>();
             Class<?> clazz = dto.getClass();
             for (Field field : clazz.getDeclaredFields()) {
 

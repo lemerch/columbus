@@ -9,13 +9,14 @@ import static org.junit.Assert.assertNotNull;
 
 public class ModelTests {
 
-    private static RowMapper<Model> rowMapper =
-            JdbcMapper.generateRowMapper(Model.class, "id", "id",
-                                                        "name", "sname",
-                                                        "message", "smessage");
+    private static JdbcMapper.forModel<Model> modelMapper =
+            new JdbcMapper.forModel<>(Model.class,
+                    "id", "id",
+                    "name", "sname",
+                    "message", "smessage");
 
     @Test
     public void simpleModelTest() {
-        assertNotNull(rowMapper);
+        assertNotNull(modelMapper.get());
     }
 }

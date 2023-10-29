@@ -233,7 +233,10 @@ public class FieldMapper {
             boolean fromCorrect = false;
             boolean toCorrect = false;
             for (Field fromField : fromFields) {
-                if (key.equals(fromField.getName())) fromCorrect = true;
+                if (key.equals(fromField.getName())) {
+                    fromCorrect = true;
+                    break;
+                }
             }
             for (Field toField : toFields) {
                 if (schema.get(key).equals(toField.getName())) toCorrect = true;

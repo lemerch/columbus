@@ -40,7 +40,7 @@ Your models/dto should contain default constructors and setters with geters, i.e
     <dependency>
           <groupId>com.github.lemerch</groupId>
           <artifactId>columbus</artifactId>
-          <version>1-6.0.12</version>
+          <version>2-6.0.13</version>
     </dependency>
 </dependencies>
 ```
@@ -57,39 +57,57 @@ The Spring Framework is released under version 2.0 of the [Apache License](https
 ### JdbcMapper
 
 ```java
+import com.github.lemerch.columbus.JdbcMapper;
+
 public abstract class AbstractDAOImpl<MODEL> implements AbstractDAO<MODEL> {
 
     @Autowired
     protected NamedParameterJdbcTemplate jdbcTemplate;
-    
-    protected RowMapper<MODEL> rowMapper;
+
+    protected JdbcMapper.forModel<MODEL> modelMapper;
     protected String table;
-    
-    public AbstractDAOImpl(String table, RowMapper<MODEL> rowMapper) {
-        this.rowMapper = rowMapper;
+
+    public AbstractDAOImpl(String table, JdbcMapper.forModel<MODEL> modelMapper) {
+        this.modelMapper = modelMapper;
         this.table = table;
     }
 
     @Override
     public List<MODEL> getAll() {
-        return jdbcTemplate.query("select * from " + table, rowMapper);
+        return jdbcTemplate.query("select * from " + table, modelMapper.get());
     }
+
     @Override
     public List<MODEL> getAllByColumn(String column, Object value) {
         return jdbcTemplate.query("select * from " + table
                         + " where " + column + " = :value",
-                Map.of("value", value) , rowMapper);
+                Map.of("value", value), modelMapper.get());
     }
+
     @Override
     public MODEL getFirstByColumn(String column, Object value) {
         return jdbcTemplate.queryForObject("select * from " + table
                         + " where " + column + " = :value limit 1",
-                Map.of("value", value), rowMapper);
+                Map.of("value", value), modelMapper.get());
     }
-    public<DTO> void create(JdbcMapper.forDTO<DTO> dtoMapper, DTO dto) {
+
+    @Override
+    public <DTO> void create(JdbcMapper.forDTO<DTO> dtoMapper, DTO dto) {
         jdbcTemplate.update("insert into " + table +
                 " (" + dtoMapper.columns + ") " +
                 "values (" + dtoMapper.values + ")", dtoMapper.getParams(dto));
+    }
+    
+    // OR
+
+    @Override
+    public <DTO> void createOnContract(DTO dto) {
+        
+        JdbcMapper.forContractDTO<DTO> contract = new JdbcMapper.forContractDTO(this.modelMapper, dto);
+        
+        jdbcTemplate.update("insert into " + table +
+                " (" + contract.columns + ") " +
+                "values (" + contract.values + ")", contract.params);
     }
 
 }
@@ -150,6 +168,13 @@ public class TestServiceImpl implements TestService {
     @Override
     public void createTest(TestDTO dto) {
         testDAO.create(dto.mapper, dto);
+    }
+    
+    // OR 
+
+    @Override
+    public void createOnContractTest(TestDTO dto) {
+        testDAO.createOnContract(dto);
     }
 }
 ```
